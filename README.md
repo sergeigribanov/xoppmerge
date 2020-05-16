@@ -5,4 +5,4 @@ Suppose you have PDF file "Some Name.pdf" and you also have a number of annotati
 
 ## Ussage
 
-python3 xoppmerge.py -i \<prefix to .xopp annotations> -o \<output prefix\> -p \<prefix with the original local PDFs\> -e <prefix for PDF export>
+python3 xoppmerge.py -i \<prefix to .xopp annotations> -o \<output prefix\> -p \<prefix with the original local PDFs\> -e \<prefix for PDF export\>
