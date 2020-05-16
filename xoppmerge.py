@@ -1,6 +1,8 @@
 import re
 import os
 import gzip
+import xlwt
+import json
 import argparse
 import subprocess
 import xml.etree.ElementTree as et
@@ -123,6 +125,7 @@ def xopps_merge(tag, path_list, output_path, pdf_prefix, scoring = False):
 
     xopp_score_table(root, tag, scores)
     tree.write(gzip.open(output_path, 'wt'), encoding='unicode')
+    return scores
 
 def search_annotations(prefix):
     result = dict()
@@ -153,6 +156,61 @@ def pdf_export(xopp_path, pdf_path):
     subprocess.Popen(['/bin/bash', '-c',
                       'xournalpp {} -p {}'.format(
                           xopp_path.replace(' ', '\ '), pdf_path.replace(' ', '\ '))])
+
+def colnum_string(m):
+    n = m + 1
+    string = ''
+    while n > 0:
+        n, remainder = divmod(n - 1, 26)
+        string = chr(65 + remainder) + string
+    return string
+    
+def export_excel(path, sheet, scores,
+                 match_template = None,
+                 tag_order = None):
+    book = xlwt.Workbook()
+    sh = book.add_sheet(sheet)
+    ntags = 1
+    problems = None
+    for i, tag in enumerate(scores):
+        y = i + 1
+        n = 0
+        if match_template:
+            mres = re.match(match_template, tag)
+            assert(mres != None)
+            n = mres.lastindex
+            ntags = mres.lastindex
+            for j in range(0, n):
+                sh.write(y, j, mres.group(tag_order[j]))
+
+        else:
+            n = 1
+            sh.write(y, 0, tag)
+
+        s = ''
+        if problems == None:
+            problems = [key for key in scores[tag]]
+            
+        for problem in scores[tag]:
+            sh.write(y, n, float(scores[tag][problem]))
+            if s != '':
+                s += '+'
+
+            s += '{}{}'.format(colnum_string(n), y)
+            n += 1
+            
+        sh.write(y, n, xlwt.Formula(s))
+
+    for i in range(ntags):
+        sh.write(0, i, 'Tag {}'.format(i))
+
+    for i, problem in enumerate(problems):
+        sh.write(0, i + ntags, problem)
+
+    sh.write(0, ntags + len(problems), 'sum')
+
+    book.save(path)
+    
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -168,11 +226,25 @@ if __name__ == '__main__':
                         help='Score counting. Searching for '
                         'text "Problem <number>: <score>" (for example, "Problem 3: 10.5") '
                         'and summarizing scores.')
+    parser.add_argument('-c', '--scoring-conf', type=str, default=None,
+                        help='Path to scoring JSON config (for example, scoring.json).')
     args = parser.parse_args()
     annotations = search_annotations(args.input_prefix)
+    scores = dict()
     for tag in annotations:
         xopp_path = os.path.join(args.output_prefix, '{}_final.pdf.xopp'.format(tag))
-        xopps_merge(tag, annotations[tag], xopp_path, args.pdf_prefix, args.scoring)
+        scores[tag] = xopps_merge(tag, annotations[tag], xopp_path, args.pdf_prefix, args.scoring)
         if args.pdf_export_prefix != None:
             pdf_path = os.path.join(args.pdf_export_prefix, '{}_final.pdf'.format(tag))
             pdf_export(xopp_path, pdf_path)
+
+    if args.scoring:
+        if args.scoring_conf:
+            with open(args.scoring_conf, 'r') as fl:
+                conf = json.load(fl)
+                export_excel('scores.xsl', 'sheet', scores,
+                             match_template = conf['match_template'],
+                             tag_order = conf['tag_order'])
+
+        else:
+            export_excel('scores.xsl', 'sheet', scores)
