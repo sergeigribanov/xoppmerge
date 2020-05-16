@@ -2,6 +2,7 @@ import re
 import os
 import gzip
 import argparse
+import subprocess
 import xml.etree.ElementTree as et
 
 def xopp_open(path):
@@ -23,7 +24,7 @@ def xopps_merge(tag, path_list, output_path, pdf_prefix):
             for layer in next_page.iter('layer'):
                 page[0].append(layer)
 
-        if pdf_prefix != '':
+        if pdf_prefix != None:
             path = os.path.join(pdf_prefix, '{}.pdf'.format(tag))
             page[0].find('background').set('filename', path)
             
@@ -51,15 +52,22 @@ def search_annotations(prefix):
         result[tag] = sorted(result[tag], key = lambda x: int(re.match(mtemp, x).group(2)))
 
     return result
+
+def pdf_export(xopp_path, pdf_path):
+    subprocess.Popen(['/bin/bash', '-c', 'xournalpp {} -p {}'.format(xopp_path, pdf_path)])
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--inprefix', type=str, default=os.getcwd(), help='Input prefix')
-    parser.add_argument('-o', '--outprefix', type=str, default=os.getcwd(), help='Output prefix')
-    parser.add_argument('-p', '--pdfprefix', type=str, default='', help='Prefix to a local PDF files')
+    parser.add_argument('-i', '--input-prefix', type=str, default=os.getcwd(), help='Input prefix')
+    parser.add_argument('-o', '--output-prefix', type=str, default=os.getcwd(), help='Output prefix')
+    parser.add_argument('-p', '--pdf-prefix', type=str, default=None, help='Prefix to a local PDF files')
+    parser.add_argument('-e', '--pdf-export-prefix', type=str, default=None,
+                        help='Prefix for a PDF export')
     args = parser.parse_args()
-    annotations = search_annotations(args.inprefix)
+    annotations = search_annotations(args.input_prefix)
     for tag in annotations:
-        xopps_merge(tag, annotations[tag],
-                    os.path.join(args.outprefix, '{}_final.pdf.xopp'.format(tag)),
-                    args.pdfprefix)
+        xopp_path = os.path.join(args.output_prefix, '{}_final.pdf.xopp'.format(tag))
+        xopps_merge(tag, annotations[tag], xopp_path, args.pdf_prefix)
+        if args.pdf_export_prefix != None:
+            pdf_path = os.path.join(args.pdf_export_prefix, '{}_final.pdf'.format(tag))
+            pdf_export(xopp_path, pdf_path)
