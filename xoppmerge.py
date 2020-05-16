@@ -1,5 +1,6 @@
 import re
 import os
+import ntpath
 import gzip
 import argparse
 import xml.etree.ElementTree as et
@@ -14,7 +15,7 @@ def xopps_open(path_list):
 
     return zip(*iterables)
 
-def xopps_merge(path_list, output_path, pdf_path):
+def xopps_merge(tag, path_list, output_path, pdf_prefix):
     pages = xopps_open(path_list)
     tree = et.parse('xopp_template.xml')
     root = tree.getroot()
@@ -23,8 +24,9 @@ def xopps_merge(path_list, output_path, pdf_path):
             for layer in next_page.iter('layer'):
                 page[0].append(layer)
 
-        if pdf_path != '':
-            page[0].find('background').set('filename', pdf_path)
+        if pdf_prefix != '':
+            path = os.path.join(pdf_prefix, '{}.pdf'.format(tag))
+            page[0].find('background').set('filename', path)
             
         root.append(page[0])
 
@@ -55,10 +57,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--inprefix', type=str, default=os.getcwd(), help='Input prefix')
     parser.add_argument('-o', '--outprefix', type=str, default=os.getcwd(), help='Output prefix')
-    parser.add_argument('-p', '--pdfpath', type=str, default='', help='Path to a local PDF file')
+    parser.add_argument('-p', '--pdfprefix', type=str, default='', help='Prefix to a local PDF files')
     args = parser.parse_args()
     annotations = search_annotations(args.inprefix)
     for tag in annotations:
-        xopps_merge(annotations[tag],
+        xopps_merge(tag, annotations[tag],
                     os.path.join(args.outprefix, '{}_final.pdf.xopp'.format(tag)),
-                    args.pdfpath)
+                    args.pdfprefix)
