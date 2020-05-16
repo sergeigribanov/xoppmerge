@@ -4,4 +4,4 @@ Suppose you have PDF file "Some Name.pdf" and you also have a number of annotati
 "Some Name" is considered as a tag. This tag can be a name of a student and "Some Name.pdf" is his examination work.
 
 Run the following script:
-python3 xoppmerge.py -i <prefix to .xopp annotations> -o <output prefix> -p <prefix with the original local PDFs>
+python3 xoppmerge.py -i \<prefix to .xopp annotations> -o \<output prefix\> -p \<prefix with the original local PDFs\>
