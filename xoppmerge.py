@@ -33,12 +33,12 @@ def xopps_merge(path_list, output_path, pdf_path):
 def search_annotations(prefix):
     result = dict()
     mtemp = '(.*)_([0-9]+).pdf.xopp'
-    for root, dirs, files in os.walk("."):
+    for root, dirs, files in os.walk(prefix):
         for filename in files:
             match = re.match(mtemp, filename)
             if not match:
                 continue
-            
+
             path = os.path.join(root, filename)
             tag = match.group(1)
             if tag not in result:
