@@ -1,6 +1,5 @@
 import re
 import os
-import ntpath
 import gzip
 import argparse
 import xml.etree.ElementTree as et
