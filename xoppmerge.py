@@ -15,13 +15,104 @@ def xopps_open(path_list):
 
     return zip(*iterables)
 
-def xopps_merge(tag, path_list, output_path, pdf_prefix):
-    pages = xopps_open(path_list)
+def detect_scores(page, scores):
+    mtemp = 'Problem ([0-9]+): ([+-]?(\d+((\.|\,)\d*)?|(\.|\,)\d+)([eE][+-]?\d+)?)'
+    for page_copy in page:
+        for layer in page_copy.iter('layer'):
+            for text in layer.iter('text'):
+                match = re.match(mtemp, text.text)
+                if match:
+                    assert(match.group(1) not in scores)
+                    scores[match.group(1)] = float(match.group(2))
+
+def xopp_background(bkg_type = 'solid', color = '#ffffffff', style='graph'):
+    result = et.Element('background')
+    result.attrib = {'type' : bkg_type, 'color' : color, 'style' : style}
+    return result
+                    
+def xopp_rectangle(x1, y1, x2, y2,
+                   tool = 'pen', ts = '0ll', fn = '',
+                   color = '#000000ff', line_width = 2.26):
+    result = et.Element('stroke')
+    result.attrib = {'tool' : tool, 'ts' : ts, 'fn' : fn,
+                   'color' : color, 'width' : str(line_width)}
+    table_coord = [x1, y1, x1, y2, x2, y2, x2, y1, x1, y1]
+    result.text = ' '.join([str(el) for el in table_coord])
+    return result
+
+def xopp_text(text, x, y, size=12, color='#000000ff',
+              font='Sans', ts='0ll', fn=''):
+    result = et.Element('text')
+    result.attrib = {'font' : font, 'size' : str(size), 'x' : str(x), 'y' : str(y),
+                     'color' : color, 'ts' : ts, 'fn' : fn}
+    result.text = text
+    return result
+
+def xopp_line(x1, y1, x2, y2,
+              tool = 'pen', ts = '0ll', fn = '',
+              color = '#000000ff', line_width = 2.26):
+    result = et.Element('stroke')
+    result.attrib = {'tool' : tool, 'ts' : ts, 'fn' : fn,
+                   'color' : color, 'width' : str(line_width)}
+    result.text = '{x1} {y1} {x2} {y2}'.format(x1 = x1, y1 = y1, x2 = x2, y2 = y2)
+    return result
+
+def xopp_summ(x, y, width = 27.674):
+    result = et.parse('xopp_summ.xml').getroot()
+    result.attrib = {'text' : '\sum', 'left' : str(x), 'top' : str(y),
+                     'right' : str(x + width),
+                     'bottom' : str(y + 0.936 * width)}
+    return result
+                    
+def xopp_score_table(root, tag, scores):
+    page_attrib = {'width' : '725.76000000', 'height' : '200.0'}
+    page = et.Element('page')
+    page.attrib = page_attrib
+    layer = et.Element('layer')
+    x1, y1, x2, y2 = 100, 80, 600, 150
+    n = len(scores)
+    h = (x2 - x1) / (n + 1)
+    frame = xopp_rectangle(x1, y1, x2, y2, color='#3333ccff')
+    title = xopp_text(tag, 100, 32, color='#3333ccff', size=24)
+    layer.insert(1, title)
+    layer.insert(2, frame)
+    h0 = 0.33 * (y2 - y1)
+    h1 = y2 - y1 - h0
+    ly = y1 + h0
+    layer.insert(3, xopp_line(x1, ly, x2, ly, color='#3333ccff'))
+    k = 4
+    summ = 0
+    for i, name in enumerate(scores):
+        lx = x1 + (i + 1) * h
+        layer.insert(k, xopp_line(lx, y1, lx, y2, color='#3333ccff'))
+        k += 1
+        layer.insert(k, xopp_text(name, lx - 0.55 * h , y1 + 0.25 * h0))
+        k += 1
+        layer.insert(k, xopp_text(str(scores[name]), lx - 0.6 * h , ly + 0.4 * h1))
+        k += 1
+        summ += scores[name]
+
+    layer.insert(k, xopp_summ(x1 + (n + 0.4) * h, y1 + 0.02 * h0))
+    k += 1
+    layer.insert(k, xopp_text(str(summ), x1 + (n + 0.4) * h, ly + 0.4 * h1))
+
+    page.insert(1, xopp_background())
+    page.insert(1, layer)
+    root.insert(2, page)
+    
+                    
+def xopps_merge(tag, path_list, output_path, pdf_prefix, scoring = False):
+    print(tag)
+    docs = xopps_open(path_list)
     tree = et.parse('xopp_template.xml')
     root = tree.getroot()
-    for page in pages:
-        for next_page in page[1:]:
-            for layer in next_page.iter('layer'):
+    scores = dict()
+    for page in docs:
+        if (scoring):
+            detect_scores(page, scores)
+            
+        for page_copy in page[1:]:
+            for layer in page_copy.iter('layer'):
                 page[0].append(layer)
 
         if pdf_prefix != None:
@@ -30,6 +121,7 @@ def xopps_merge(tag, path_list, output_path, pdf_prefix):
             
         root.append(page[0])
 
+    xopp_score_table(root, tag, scores)
     tree.write(gzip.open(output_path, 'wt'), encoding='unicode')
 
 def search_annotations(prefix):
@@ -37,6 +129,10 @@ def search_annotations(prefix):
     mtemp = '(.*)_([0-9]+).pdf.xopp'
     for root, dirs, files in os.walk(prefix):
         for filename in files:
+            match = re.match('(.*).pdf.xopp~', filename)
+            if match:
+                continue
+            
             match = re.match(mtemp, filename)
             if not match:
                 continue
@@ -54,20 +150,29 @@ def search_annotations(prefix):
     return result
 
 def pdf_export(xopp_path, pdf_path):
-    subprocess.Popen(['/bin/bash', '-c', 'xournalpp {} -p {}'.format(xopp_path, pdf_path)])
+    subprocess.Popen(['/bin/bash', '-c',
+                      'xournalpp {} -p {}'.format(
+                          xopp_path.replace(' ', '\ '), pdf_path.replace(' ', '\ '))])
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input-prefix', type=str, default=os.getcwd(), help='Input prefix')
-    parser.add_argument('-o', '--output-prefix', type=str, default=os.getcwd(), help='Output prefix')
-    parser.add_argument('-p', '--pdf-prefix', type=str, default=None, help='Prefix to a local PDF files')
+    parser.add_argument('-i', '--input-prefix', type=str, default=os.getcwd(),
+                        help='Input prefix to .xopp annotations.')
+    parser.add_argument('-o', '--output-prefix', type=str, default=os.getcwd(),
+                        help='Output prefix to merged .xopp annotations.')
+    parser.add_argument('-p', '--pdf-prefix', type=str, default=None,
+                        help='Prefix to a local PDF files.')
     parser.add_argument('-e', '--pdf-export-prefix', type=str, default=None,
-                        help='Prefix for a PDF export')
+                        help='Prefix for a PDF export.')
+    parser.add_argument('-s', '--scoring', action='store_true',
+                        help='Score counting. Searching for '
+                        'text "Problem <number>: <score>" (for example, "Problem 3: 10.5") '
+                        'and summarizing scores.')
     args = parser.parse_args()
     annotations = search_annotations(args.input_prefix)
     for tag in annotations:
         xopp_path = os.path.join(args.output_prefix, '{}_final.pdf.xopp'.format(tag))
-        xopps_merge(tag, annotations[tag], xopp_path, args.pdf_prefix)
+        xopps_merge(tag, annotations[tag], xopp_path, args.pdf_prefix, args.scoring)
         if args.pdf_export_prefix != None:
             pdf_path = os.path.join(args.pdf_export_prefix, '{}_final.pdf'.format(tag))
             pdf_export(xopp_path, pdf_path)
