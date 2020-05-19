@@ -3,6 +3,7 @@ import os
 import gzip
 import xlwt
 import json
+import collections
 import argparse
 import subprocess
 import xml.etree.ElementTree as et
@@ -123,6 +124,7 @@ def xopps_merge(tag, path_list, output_path, pdf_prefix, scoring = False):
             
         root.append(page[0])
 
+    scores = collections.OrderedDict(sorted(scores.items()))
     xopp_score_table(root, tag, scores)
     tree.write(gzip.open(output_path, 'wt'), encoding='unicode')
     return scores
@@ -242,9 +244,9 @@ if __name__ == '__main__':
         if args.scoring_conf:
             with open(args.scoring_conf, 'r') as fl:
                 conf = json.load(fl)
-                export_excel('scores.xsl', 'sheet', scores,
+                export_excel('scores.xls', 'sheet', scores,
                              match_template = conf['match_template'],
                              tag_order = conf['tag_order'])
 
         else:
-            export_excel('scores.xsl', 'sheet', scores)
+            export_excel('scores.xls', 'sheet', scores)
