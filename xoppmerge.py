@@ -198,7 +198,7 @@ def export_excel(path, sheet, scores,
             if s != '':
                 s += '+'
 
-            s += '{}{}'.format(colnum_string(n), y)
+            s += '{}{}'.format(colnum_string(n), y + 1)
             n += 1
             
         sh.write(y, n, xlwt.Formula(s))
