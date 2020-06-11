@@ -19,7 +19,7 @@ def xopps_open(path_list):
     return zip(*iterables)
 
 def detect_scores(page, scores):
-    mtemp = 'Problem ([0-9]+): ([+-]?(\d+((\.|\,)\d*)?|(\.|\,)\d+)([eE][+-]?\d+)?)'
+    mtemp = '[Pp]?roblem ([0-9]+): ([+-]?(\d+((\.|\,)\d*)?|(\.|\,)\d+)([eE][+-]?\d+)?)'
     for page_copy in page:
         for layer in page_copy.iter('layer'):
             for text in layer.iter('text'):
@@ -167,50 +167,41 @@ def colnum_string(m):
         string = chr(65 + remainder) + string
     return string
     
-def export_excel(path, sheet, scores,
-                 match_template = None,
-                 tag_order = None):
+def export_excel(path, sheet, scores, n):
     book = xlwt.Workbook()
     sh = book.add_sheet(sheet)
     ntags = 1
     problems = None
+    print(scores)
+    sh.write(0, 0, 'группа')
+    sh.write(0, 1, 'ФИО')
+    for i in range(n):
+        sh.write(0, i + 2, i + 1)
+
+    sh.write(0, n + 2, 'сумма')
+        
     for i, tag in enumerate(scores):
         y = i + 1
-        n = 0
-        if match_template:
-            mres = re.match(match_template, tag)
-            assert(mres != None)
-            n = mres.lastindex
-            ntags = mres.lastindex
-            for j in range(0, n):
-                sh.write(y, j, mres.group(tag_order[j]))
-
-        else:
-            n = 1
-            sh.write(y, 0, tag)
-
+        mres = re.match('(.*) ([0-9]+)', tag)
+        assert(mres != None)
+        sh.write(y, 0, mres.group(2))
+        sh.write(y, 1, mres.group(1))
+        book.save(path)
         s = ''
-        if problems == None:
-            problems = [key for key in scores[tag]]
-            
-        for problem in scores[tag]:
-            sh.write(y, n, float(scores[tag][problem]))
+        for p in range(1, n + 1):
+            problem = str(p)
+            if problem in scores[tag]:
+                sh.write(y, p + 1, float(scores[tag][problem]))
+            else:
+                sh.write(y, p + 1, 0)
+
             if s != '':
                 s += '+'
+                
+            s += '{}{}'.format(colnum_string(p + 1), y + 1)
 
-            s += '{}{}'.format(colnum_string(n), y + 1)
-            n += 1
-            
-        sh.write(y, n, xlwt.Formula(s))
-
-    for i in range(ntags):
-        sh.write(0, i, 'Tag {}'.format(i))
-
-    for i, problem in enumerate(problems):
-        sh.write(0, i + ntags, problem)
-
-    sh.write(0, ntags + len(problems), 'sum')
-
+        sh.write(y, p + 2, xlwt.Formula(s))
+                
     book.save(path)
     
     
@@ -228,8 +219,6 @@ if __name__ == '__main__':
                         help='Score counting. Searching for '
                         'text "Problem <number>: <score>" (for example, "Problem 3: 10.5") '
                         'and summarizing scores.')
-    parser.add_argument('-c', '--scoring-conf', type=str, default=None,
-                        help='Path to scoring JSON config (for example, scoring.json).')
     args = parser.parse_args()
     annotations = search_annotations(args.input_prefix)
     scores = dict()
@@ -241,12 +230,4 @@ if __name__ == '__main__':
             pdf_export(xopp_path, pdf_path)
 
     if args.scoring:
-        if args.scoring_conf:
-            with open(args.scoring_conf, 'r') as fl:
-                conf = json.load(fl)
-                export_excel('scores.xls', 'sheet', scores,
-                             match_template = conf['match_template'],
-                             tag_order = conf['tag_order'])
-
-        else:
-            export_excel('scores.xls', 'sheet', scores)
+        export_excel('scores.xls', 'test-exam', scores, 5)

@@ -1,4 +1,0 @@
-{
-    "match_template" : "(.*) ([0-9]+)",
-    "tag_order" : [2, 1]
-}
