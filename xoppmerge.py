@@ -31,7 +31,7 @@ def detect_scores(page, scores):
                 else:
                     assert('problem' not in text.text.lower())
 
-def xopp_background(bkg_type = 'solid', color = '#ffffffff', style='graph'):
+def xopp_background(bkg_type = 'solid', color = '#ffffffff', style='plain'):
     result = et.Element('background')
     result.attrib = {'type' : bkg_type, 'color' : color, 'style' : style}
     return result
@@ -165,9 +165,6 @@ def adjust_scale(tag, page, tgt_size):
     scale = tgt_size[0] / src_size[0]
     page.attrib['width'] = str(src_size[0] * scale)
     page.attrib['height'] = str(src_size[1] * scale)
-    if tag == 'Айдаков Е.Е. 17347':
-        print('scale = {}'.format(scale))
-        print(src_size)
         
     for layer in page:
         for text in layer.iter('text'):
@@ -203,9 +200,6 @@ def xopps_merge(tag, path_list, output_path, pdf_prefix, scoring = False):
             detect_scores(page, scores)
              
         for page_copy in page[1:]:
-            if tag == 'Айдаков Е.Е. 17347':
-                print(page_copy.attrib['width'], page_copy.attrib['height'])
-                
             for layer in page_copy.iter('layer'):
                 page[0].append(layer)
 
