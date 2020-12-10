@@ -15,3 +15,5 @@ resut\_pdfs is the output directory with the merged annotations in the pdf forma
 Option -s is used for score counting. You can skip this option if you doesn't need it. To use this option, each annotation should contain at least one key phrase:
 Problem "problem number": "score". The example of key phrase:
 Problem 3: 1
+
+The full number of problems is 5 (hardcoded).
