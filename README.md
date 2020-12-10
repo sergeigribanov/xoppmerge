@@ -12,6 +12,6 @@ xopp\_merged is the output directory with merged annotations in the xopp format,
 exam\_pdf is the input directory with the exam pdf files
 resut\_pdfs is the output directory with the merged annotations in the pdf format.
 
-Option -s is used for score counting. To use this option, each annotation should contain at least one key phrase:
+Option -s is used for score counting. You can skip this option if you doesn't need it. To use this option, each annotation should contain at least one key phrase:
 Problem "problem number": "score". The example of key phrase:
 Problem 3: 1
