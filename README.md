@@ -5,4 +5,13 @@ Suppose you have PDF file "Some Name.pdf" and you also have a number of annotati
 
 ## Ussage
 
-python3 xoppmerge.py -i \<prefix to .xopp annotations> -o \<output prefix\> -p \<prefix with the original local PDFs\> -e \<prefix for PDF export\>
+python xoppmerge.py -i exam\_xopp -o xopp\_merged -p exam\_pdf -e result\_pdfs -s
+
+exam\_xopp is the input directory with annotations,
+xopp\_merged is the output directory with merged annotations in the xopp format,
+exam\_pdf is the input directory with the exam pdf files
+resut\_pdfs is the output directory with the merged annotations in the pdf format.
+
+Option -s is used for score counting. To use this option, each annotation should contain at least one key phrase:
+Problem "problem number": "score". The example of key phrase:
+Problem 3: 1
